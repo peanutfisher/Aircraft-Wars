@@ -86,9 +86,16 @@ def add_big_enemies(group1, group2, num):
         group1.add(bigenemy)
         group2.add(bigenemy)
 
-add_small_enemies(small_enemies, all_enemies, 15)
-add_middle_enemies(middle_enemies, all_enemies, 7)
+add_small_enemies(small_enemies, all_enemies, 10)
+add_middle_enemies(middle_enemies, all_enemies, 5)
 add_big_enemies(big_enemies, all_enemies, 3)
+
+# Collision Checking
+myplane_destroy_index = 0
+small_enemy_destroy_index = 0
+middle_enemy_destroy_index = 0
+big_enemy_destroy_index = 0
+
 
 while running:
     for event in pygame.event.get():
@@ -119,32 +126,82 @@ while running:
         counter = 120
 
     screen.blit(background, (0,0))
-    # draw myplane with different pictures depends on flag
-    if switch_picture:
-        screen.blit(myplane.image1, myplane.rect)
-    else:
-        screen.blit(myplane.image2, myplane.rect)
+
+    # Monitoring if myplane is collided with enemy
+    collide_list = pygame.sprite.spritecollide(myplane, all_enemies, False, pygame.sprite.collide_mask)
+    if collide_list:
+        #myplane.active = False
+        for each in collide_list:
+            each.active = False
 
     # draw big enemies
     for each in big_enemies:
-        each.move()
-        if each.rect.bottom == -5:
-            enemy3_flying_sound.play()
+        # enemy is active
+        if each.active:
+            each.move()
+            if each.rect.bottom == -5:
+                enemy3_flying_sound.play(-1)
 
-        if switch_picture:
-            screen.blit(each.image1, each.rect)
+            if switch_picture:
+                screen.blit(each.image1, each.rect)
+            else:
+                screen.blit(each.image2, each.rect)
         else:
-            screen.blit(each.image2, each.rect)
+            # enemy become inactive(destroyed)
+            enemy3_down_sound.play()
+            if not (counter % 3):
+                # stop the fly sound and start destroy sound
+                if big_enemy_destroy_index == 0:
+                    enemy3_flying_sound.stop()
+
+                screen.blit(each.destroy_images[big_enemy_destroy_index], each.rect)
+                big_enemy_destroy_index = (big_enemy_destroy_index + 1) % 6
+                print('index:', big_enemy_destroy_index)
+                if big_enemy_destroy_index == 0:
+                    each.reset()
 
     # draw middle enemies
     for each in middle_enemies:
-        each.move()
-        screen.blit(each.image, each.rect)
+        if each.active:
+            each.move()
+            screen.blit(each.image, each.rect)
+        else:
+            enemy2_down_sound.play()
+            if not (counter % 3):
+                screen.blit(each.destroy_images[middle_enemy_destroy_index], each.rect)
+                middle_enemy_destroy_index = (middle_enemy_destroy_index + 1) % 4
+                if middle_enemy_destroy_index % 4 == 0:
+                    each.reset()
 
     # draw small enemies
     for each in small_enemies:
-        each.move()
-        screen.blit(each.image, each.rect)
+        if each.active:
+            each.move()
+            screen.blit(each.image, each.rect)
+        else:
+            enemy1_down_sound.play()
+            if not (counter % 3):
+                screen.blit(each.destroy_images[small_enemy_destroy_index], each.rect)
+                small_enemy_destroy_index = (small_enemy_destroy_index + 1) % 4
+                print(small_enemy_destroy_index)
+                if small_enemy_destroy_index % 4 == 0:
+                    each.reset()
+
+    # draw myplane with different pictures depends on flag
+    if myplane.active:
+        if switch_picture:
+            screen.blit(myplane.image1, myplane.rect)
+        else:
+            screen.blit(myplane.image2, myplane.rect)
+    else:
+        me_down_sound.play()
+        if not (counter % 3):
+            if not (counter % 3):
+                screen.blit(myplane.destroy_images[myplane_destroy_index], myplane.rect)
+                myplane_destroy_index = (myplane_destroy_index + 1) % 4
+                if myplane_destroy_index % 4 == 0:
+                    running = False
+                    print('GAME OVER!!')
 
     pygame.display.flip()
     clock.tick(60)

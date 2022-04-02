@@ -2,6 +2,7 @@ import pygame
 import sys
 import myplane
 import enemies
+import bullet1
 import traceback
 from pygame.locals import *
 
@@ -53,6 +54,11 @@ use_bomb_sound.set_volume(0.2)
 # create myplane
 myplane = myplane.MyPlane(myplane_image1, myplane_image2, bg_size)
 
+# color for the energy
+BLACK = (0, 0, 0)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
+
 
 # groups of enemies
 all_enemies = pygame.sprite.Group()
@@ -90,12 +96,18 @@ add_small_enemies(small_enemies, all_enemies, 10)
 add_middle_enemies(middle_enemies, all_enemies, 5)
 add_big_enemies(big_enemies, all_enemies, 3)
 
-# Collision Checking
+# index for Collision Checking
 myplane_destroy_index = 0
 small_enemy_destroy_index = 0
 middle_enemy_destroy_index = 0
 big_enemy_destroy_index = 0
 
+# bullet initialization
+bullets = []
+bullet_index = 0
+BULLET_NUM = 4
+for i in range(BULLET_NUM):
+    bullets.append(bullet1.Bullet1(myplane.rect.midtop))
 
 while running:
     for event in pygame.event.get():
@@ -125,27 +137,68 @@ while running:
     if not counter:
         counter = 120
 
-    screen.blit(background, (0,0))
-
     # Monitoring if myplane is collided with enemy
     collide_list = pygame.sprite.spritecollide(myplane, all_enemies, False, pygame.sprite.collide_mask)
     if collide_list:
-        myplane.active = False
+        #myplane.active = False
         for each in collide_list:
             each.active = False
+
+    # Starting drawing the screen
+    screen.blit(background, (0,0))
+
+    # change the bullet position to follow myplane every 10 frames
+    if not (counter % 10):
+        bullets[bullet_index].reset(myplane.rect.midtop)
+        bullet_index = (bullet_index + 1) % BULLET_NUM
+
+    # draw the bullet
+    for b in bullets:
+        if b.active:
+            b.move()
+            screen.blit(b.image, b.rect)
+            enemy_hit = pygame.sprite.spritecollide(b, all_enemies, False, pygame.sprite.collide_mask)
+            if enemy_hit:
+                b.active = False
+                for e in enemy_hit:
+                    if e in middle_enemies or e in big_enemies:
+                        e.hit = True
+                        e.energy -= 1
+                        print('e, e.energy',e, e.energy)
+                        if e.energy == 0:
+                            e.active = False
+                    else:
+                        e.active = False
 
     # draw big enemies
     for each in big_enemies:
         # enemy is active
         if each.active:
             each.move()
+            # draw the energy line of full blood
+            pygame.draw.line(screen, BLACK, (each.rect.left, each.rect.top - 5),\
+                             (each.rect.right, each.rect.top - 5), 2)
+            big_enemy_energy_remain = each.energy / enemies.BigEnemy.energy
+            # if the energy lower than 20%, draw red line, otherwise draw green line
+            if big_enemy_energy_remain > 0.2:
+                color = GREEN
+            else:
+                color = RED
+            pygame.draw.line(screen, color, (each.rect.left, each.rect.top - 5),\
+                             (each.rect.left + each.rect.width * big_enemy_energy_remain, each.rect.top - 5), 2)
+            print('big_enemy_energy_remain', each.energy , enemies.BigEnemy.energy, big_enemy_energy_remain)
+
             if each.rect.bottom == -5:
                 enemy3_flying_sound.play(-1)
-
-            if switch_picture:
-                screen.blit(each.image1, each.rect)
+            # draw the enemy hit picture
+            if each.hit:
+                screen.blit(each.image_hit, each.rect)
+                each.hit = False
             else:
-                screen.blit(each.image2, each.rect)
+                if switch_picture:
+                    screen.blit(each.image1, each.rect)
+                else:
+                    screen.blit(each.image2, each.rect)
         else:
             # enemy become inactive(destroyed)
             if not (counter % 3):
@@ -165,7 +218,25 @@ while running:
     for each in middle_enemies:
         if each.active:
             each.move()
-            screen.blit(each.image, each.rect)
+            # draw the energy line of full blood
+            pygame.draw.line(screen, BLACK, (each.rect.left, each.rect.top - 5), \
+                             (each.rect.right, each.rect.top - 5), 2)
+            middle_enemy_energy_remain = each.energy / enemies.MiddleEnemy.energy
+            # if the energy lower than 20%, draw red line, otherwise draw green line
+            if middle_enemy_energy_remain > 0.2:
+                color = GREEN
+            else:
+                color = RED
+            pygame.draw.line(screen, color, (each.rect.left, each.rect.top - 5), \
+                             (each.rect.left + each.rect.width * middle_enemy_energy_remain, each.rect.top - 5), 2)
+            print('middle_enemy_energy_remain', each.energy, enemies.MiddleEnemy.energy, middle_enemy_energy_remain)
+
+            # draw the enemy hit picture
+            if each.hit:
+                screen.blit(each.image_hit, each.rect)
+                each.hit = False
+            else:
+                screen.blit(each.image, each.rect)
         else:
             # middle enemy down
             if not (counter % 3):

@@ -58,6 +58,11 @@ myplane = myplane.MyPlane(myplane_image1, myplane_image2, bg_size)
 BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
+WHITE = (255, 255, 255)
+
+# Scores Board
+scores = 0
+scores_font = pygame.font.Font('font/font.ttf', 36)
 
 
 # groups of enemies
@@ -164,7 +169,6 @@ while running:
                     if e in middle_enemies or e in big_enemies:
                         e.hit = True
                         e.energy -= 1
-                        print('e, e.energy',e, e.energy)
                         if e.energy == 0:
                             e.active = False
                     else:
@@ -186,7 +190,6 @@ while running:
                 color = RED
             pygame.draw.line(screen, color, (each.rect.left, each.rect.top - 5),\
                              (each.rect.left + each.rect.width * big_enemy_energy_remain, each.rect.top - 5), 2)
-            print('big_enemy_energy_remain', each.energy , enemies.BigEnemy.energy, big_enemy_energy_remain)
 
             if each.rect.bottom == -5:
                 enemy3_flying_sound.play(-1)
@@ -212,6 +215,7 @@ while running:
                 if big_enemy_destroy_index == 0:
                     # stop the fly sound
                     enemy3_flying_sound.stop()
+                    scores += 10000
                     each.reset()
 
     # draw middle enemies
@@ -229,7 +233,6 @@ while running:
                 color = RED
             pygame.draw.line(screen, color, (each.rect.left, each.rect.top - 5), \
                              (each.rect.left + each.rect.width * middle_enemy_energy_remain, each.rect.top - 5), 2)
-            print('middle_enemy_energy_remain', each.energy, enemies.MiddleEnemy.energy, middle_enemy_energy_remain)
 
             # draw the enemy hit picture
             if each.hit:
@@ -245,6 +248,7 @@ while running:
                 screen.blit(each.destroy_images[middle_enemy_destroy_index], each.rect)
                 middle_enemy_destroy_index = (middle_enemy_destroy_index + 1) % 4
                 if middle_enemy_destroy_index % 4 == 0:
+                    scores += 6000
                     each.reset()
 
     # draw small enemies
@@ -260,6 +264,7 @@ while running:
                 screen.blit(each.destroy_images[small_enemy_destroy_index], each.rect)
                 small_enemy_destroy_index = (small_enemy_destroy_index + 1) % 4
                 if small_enemy_destroy_index % 4 == 0:
+                    scores += 1000
                     each.reset()
 
     # draw myplane with different pictures depends on flag
@@ -279,6 +284,11 @@ while running:
                 pygame.time.delay(500)
                 running = False
                 print('GAME OVER!!')
+
+    scores_text = scores_font.render(('Scores: %s' % str(scores)), True, WHITE)
+    scores_rect = scores_text.get_rect()
+    scores_rect.left, scores_rect.top = 10, 5
+    screen.blit(scores_text, scores_rect)
 
     pygame.display.flip()
     clock.tick(60)

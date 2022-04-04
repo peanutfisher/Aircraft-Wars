@@ -12,13 +12,19 @@ pygame.mixer.init()
 bg_size = width, height = 480, 700
 screen = pygame.display.set_mode(bg_size)
 pygame.display.set_caption("Aircraft Wars")
-background = pygame.image.load("images\\background.png").convert()
-myplane_image1 = "images\\me1.png"
-myplane_image2 = "images\\me2.png"
-enemy1_image = "images\\enemy1.png"
-enemy2_image = "images\\enemy2.png"
-enemy3_image1 = "images\\enemy3_n1.png"
-enemy3_image2 = "images\\enemy3_n2.png"
+background = pygame.image.load("images/background.png").convert()
+myplane_image1 = "images/me1.png"
+myplane_image2 = "images/me2.png"
+enemy1_image = "images/enemy1.png"
+enemy2_image = "images/enemy2.png"
+enemy3_image1 = "images/enemy3_n1.png"
+enemy3_image2 = "images/enemy3_n2.png"
+pause_nor_image = pygame.image.load('images/pause_nor.png').convert_alpha()
+pause_pressed_image = pygame.image.load('images/pause_pressed.png').convert_alpha()
+resume_nor_image = pygame.image.load('images/resume_nor.png').convert_alpha()
+resume_pressed_image = pygame.image.load('images/resume_pressed.png').convert_alpha()
+bomb_image = pygame.image.load('images/bomb.png').convert_alpha()
+
 
 clock = pygame.time.Clock()
 
@@ -54,6 +60,12 @@ use_bomb_sound.set_volume(0.2)
 # create myplane
 myplane = myplane.MyPlane(myplane_image1, myplane_image2, bg_size)
 
+# bomb setting
+bomb_rect = bomb_image.get_rect()
+bomb_rect.left, bomb_rect.top = (10, height - bomb_rect.height - 10)
+bomb_num = 3
+bomb_font = pygame.font.Font('font/font.ttf', 48)
+
 # color for the energy
 BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
@@ -64,6 +76,12 @@ WHITE = (255, 255, 255)
 scores = 0
 scores_font = pygame.font.Font('font/font.ttf', 36)
 
+# Game Pause and Resume flag
+paused = False
+# get the rect of pause/resume icon and put it into up right corner
+pause_rect = pause_nor_image.get_rect()
+pause_rect.left, pause_rect.top = (width - pause_rect.width - 10, 10)
+pause_image = pause_nor_image
 
 # groups of enemies
 all_enemies = pygame.sprite.Group()
@@ -97,6 +115,10 @@ def add_big_enemies(group1, group2, num):
         group1.add(bigenemy)
         group2.add(bigenemy)
 
+def increase_speed(target, num):
+    for each in target:
+        each.speed += num
+
 add_small_enemies(small_enemies, all_enemies, 10)
 add_middle_enemies(middle_enemies, all_enemies, 5)
 add_big_enemies(big_enemies, all_enemies, 3)
@@ -114,11 +136,42 @@ BULLET_NUM = 4
 for i in range(BULLET_NUM):
     bullets.append(bullet1.Bullet1(myplane.rect.midtop))
 
+# level for difficulties
+level = 1
+
 while running:
     for event in pygame.event.get():
         if event.type == QUIT:
             pygame.quit()
             sys.exit()
+
+        # check if the mouse left key pressed and if it is in the icon border
+        elif event.type == MOUSEBUTTONDOWN:
+            if event.button == 1 and pause_rect.collidepoint(event.pos):
+                paused = not paused
+        # when mouse pointer goes into the border of icon it changed to a deeper icon
+        elif event.type == MOUSEMOTION:
+            if pause_rect.collidepoint(event.pos):
+                if paused:
+                    pause_image = resume_pressed_image
+                else:
+                    pause_image = pause_pressed_image
+            else:
+                if paused:
+                    pause_image = resume_nor_image
+                else:
+                    pause_image = pause_nor_image
+
+        # use space key to use bomb
+        elif event.type == KEYDOWN:
+            if event.key == K_SPACE:
+                if bomb_num:
+                    bomb_num -= 1
+                    use_bomb_sound.play()
+                    # destroy all enemies in the screen
+                    for e in all_enemies:
+                        if e.rect.bottom > 0:
+                            e.active = False
 
     # get the key_pressed list(boolean)
     key_pressed_list = pygame.key.get_pressed()
@@ -148,147 +201,196 @@ while running:
         #myplane.active = False
         for each in collide_list:
             each.active = False
-
     # Starting drawing the screen
-    screen.blit(background, (0,0))
+    screen.blit(background, (0, 0))
 
-    # change the bullet position to follow myplane every 10 frames
-    if not (counter % 10):
-        bullets[bullet_index].reset(myplane.rect.midtop)
-        bullet_index = (bullet_index + 1) % BULLET_NUM
+    # if not paused then we draw everything, otherwise it will stop
+    if not paused:
+        # change the bullet position to follow myplane every 10 frames
+        if not (counter % 10):
+            bullets[bullet_index].reset(myplane.rect.midtop)
+            bullet_index = (bullet_index + 1) % BULLET_NUM
 
-    # draw the bullet
-    for b in bullets:
-        if b.active:
-            b.move()
-            screen.blit(b.image, b.rect)
-            enemy_hit = pygame.sprite.spritecollide(b, all_enemies, False, pygame.sprite.collide_mask)
-            if enemy_hit:
-                b.active = False
-                for e in enemy_hit:
-                    if e in middle_enemies or e in big_enemies:
-                        e.hit = True
-                        e.energy -= 1
-                        if e.energy == 0:
+        # draw the bullet
+        for b in bullets:
+            if b.active:
+                b.move()
+                screen.blit(b.image, b.rect)
+                enemy_hit = pygame.sprite.spritecollide(b, all_enemies, False, pygame.sprite.collide_mask)
+                if enemy_hit:
+                    b.active = False
+                    for e in enemy_hit:
+                        if e in middle_enemies or e in big_enemies:
+                            e.hit = True
+                            e.energy -= 1
+                            if e.energy == 0:
+                                e.active = False
+                        else:
                             e.active = False
-                    else:
-                        e.active = False
 
-    # draw big enemies
-    for each in big_enemies:
-        # enemy is active
-        if each.active:
-            each.move()
-            # draw the energy line of full blood
-            pygame.draw.line(screen, BLACK, (each.rect.left, each.rect.top - 5),\
-                             (each.rect.right, each.rect.top - 5), 2)
-            big_enemy_energy_remain = each.energy / enemies.BigEnemy.energy
-            # if the energy lower than 20%, draw red line, otherwise draw green line
-            if big_enemy_energy_remain > 0.2:
-                color = GREEN
-            else:
-                color = RED
-            pygame.draw.line(screen, color, (each.rect.left, each.rect.top - 5),\
-                             (each.rect.left + each.rect.width * big_enemy_energy_remain, each.rect.top - 5), 2)
-
-            if each.rect.bottom == -5:
-                enemy3_flying_sound.play(-1)
-            # draw the enemy hit picture
-            if each.hit:
-                screen.blit(each.image_hit, each.rect)
-                each.hit = False
-            else:
-                if switch_picture:
-                    screen.blit(each.image1, each.rect)
+        # draw big enemies
+        for each in big_enemies:
+            # enemy is active
+            if each.active:
+                each.move()
+                # draw the energy line of full blood
+                pygame.draw.line(screen, BLACK, (each.rect.left, each.rect.top - 5),\
+                                 (each.rect.right, each.rect.top - 5), 2)
+                big_enemy_energy_remain = each.energy / enemies.BigEnemy.energy
+                # if the energy lower than 20%, draw red line, otherwise draw green line
+                if big_enemy_energy_remain > 0.2:
+                    color = GREEN
                 else:
-                    screen.blit(each.image2, each.rect)
-        else:
-            # enemy become inactive(destroyed)
-            if not (counter % 3):
-                # start destroy sound
-                if big_enemy_destroy_index == 0:
-                    enemy3_down_sound.play()
+                    color = RED
+                pygame.draw.line(screen, color, (each.rect.left, each.rect.top - 5),\
+                                 (each.rect.left + each.rect.width * big_enemy_energy_remain, each.rect.top - 5), 2)
 
-                screen.blit(each.destroy_images[big_enemy_destroy_index], each.rect)
-                big_enemy_destroy_index = (big_enemy_destroy_index + 1) % 6
-
-                if big_enemy_destroy_index == 0:
-                    # stop the fly sound
-                    enemy3_flying_sound.stop()
-                    scores += 10000
-                    each.reset()
-
-    # draw middle enemies
-    for each in middle_enemies:
-        if each.active:
-            each.move()
-            # draw the energy line of full blood
-            pygame.draw.line(screen, BLACK, (each.rect.left, each.rect.top - 5), \
-                             (each.rect.right, each.rect.top - 5), 2)
-            middle_enemy_energy_remain = each.energy / enemies.MiddleEnemy.energy
-            # if the energy lower than 20%, draw red line, otherwise draw green line
-            if middle_enemy_energy_remain > 0.2:
-                color = GREEN
+                if each.rect.bottom == -5:
+                    enemy3_flying_sound.play(-1)
+                # draw the enemy hit picture
+                if each.hit:
+                    screen.blit(each.image_hit, each.rect)
+                    each.hit = False
+                else:
+                    if switch_picture:
+                        screen.blit(each.image1, each.rect)
+                    else:
+                        screen.blit(each.image2, each.rect)
             else:
-                color = RED
-            pygame.draw.line(screen, color, (each.rect.left, each.rect.top - 5), \
-                             (each.rect.left + each.rect.width * middle_enemy_energy_remain, each.rect.top - 5), 2)
+                # enemy become inactive(destroyed)
+                if not (counter % 3):
+                    # start destroy sound
+                    if big_enemy_destroy_index == 0:
+                        enemy3_down_sound.play()
 
-            # draw the enemy hit picture
-            if each.hit:
-                screen.blit(each.image_hit, each.rect)
-                each.hit = False
+                    screen.blit(each.destroy_images[big_enemy_destroy_index], each.rect)
+                    big_enemy_destroy_index = (big_enemy_destroy_index + 1) % 6
+
+                    if big_enemy_destroy_index == 0:
+                        # stop the fly sound
+                        enemy3_flying_sound.stop()
+                        scores += 10000
+                        each.reset()
+
+        # draw middle enemies
+        for each in middle_enemies:
+            if each.active:
+                each.move()
+                # draw the energy line of full blood
+                pygame.draw.line(screen, BLACK, (each.rect.left, each.rect.top - 5), \
+                                 (each.rect.right, each.rect.top - 5), 2)
+                middle_enemy_energy_remain = each.energy / enemies.MiddleEnemy.energy
+                # if the energy lower than 20%, draw red line, otherwise draw green line
+                if middle_enemy_energy_remain > 0.2:
+                    color = GREEN
+                else:
+                    color = RED
+                pygame.draw.line(screen, color, (each.rect.left, each.rect.top - 5), \
+                                 (each.rect.left + each.rect.width * middle_enemy_energy_remain, each.rect.top - 5), 2)
+
+                # draw the enemy hit picture
+                if each.hit:
+                    screen.blit(each.image_hit, each.rect)
+                    each.hit = False
+                else:
+                    screen.blit(each.image, each.rect)
             else:
+                # middle enemy down
+                if not (counter % 3):
+                    if middle_enemy_destroy_index == 0:
+                        enemy2_down_sound.play()
+                    screen.blit(each.destroy_images[middle_enemy_destroy_index], each.rect)
+                    middle_enemy_destroy_index = (middle_enemy_destroy_index + 1) % 4
+                    if middle_enemy_destroy_index % 4 == 0:
+                        scores += 6000
+                        each.reset()
+
+        # draw small enemies
+        for each in small_enemies:
+            if each.active:
+                each.move()
                 screen.blit(each.image, each.rect)
+            else:
+                # small enemy down
+                if not (counter % 3):
+                    if small_enemy_destroy_index == 0:
+                        enemy1_down_sound.play()
+                    screen.blit(each.destroy_images[small_enemy_destroy_index], each.rect)
+                    small_enemy_destroy_index = (small_enemy_destroy_index + 1) % 4
+                    if small_enemy_destroy_index % 4 == 0:
+                        scores += 1000
+                        each.reset()
+
+        # draw myplane with different pictures depends on flag
+        if myplane.active:
+            if switch_picture:
+                screen.blit(myplane.image1, myplane.rect)
+            else:
+                screen.blit(myplane.image2, myplane.rect)
         else:
-            # middle enemy down
+            # myplane was down
             if not (counter % 3):
-                if middle_enemy_destroy_index == 0:
-                    enemy2_down_sound.play()
-                screen.blit(each.destroy_images[middle_enemy_destroy_index], each.rect)
-                middle_enemy_destroy_index = (middle_enemy_destroy_index + 1) % 4
-                if middle_enemy_destroy_index % 4 == 0:
-                    scores += 6000
-                    each.reset()
+                if myplane_destroy_index == 0:
+                    me_down_sound.play()
+                screen.blit(myplane.destroy_images[myplane_destroy_index], myplane.rect)
+                myplane_destroy_index = (myplane_destroy_index + 1) % 4
+                if myplane_destroy_index % 4 == 0:
+                    pygame.time.delay(500)
+                    running = False
+                    print('GAME OVER!!')
 
-    # draw small enemies
-    for each in small_enemies:
-        if each.active:
-            each.move()
-            screen.blit(each.image, each.rect)
-        else:
-            # small enemy down
-            if not (counter % 3):
-                if small_enemy_destroy_index == 0:
-                    enemy1_down_sound.play()
-                screen.blit(each.destroy_images[small_enemy_destroy_index], each.rect)
-                small_enemy_destroy_index = (small_enemy_destroy_index + 1) % 4
-                if small_enemy_destroy_index % 4 == 0:
-                    scores += 1000
-                    each.reset()
+        # draw the bomb
+        bomb_text = bomb_font.render(('x %s' % str(bomb_num)), True, WHITE)
+        screen.blit(bomb_image, bomb_rect)
+        screen.blit(bomb_text, (bomb_rect.width + 20, bomb_rect.top))
 
-    # draw myplane with different pictures depends on flag
-    if myplane.active:
-        if switch_picture:
-            screen.blit(myplane.image1, myplane.rect)
-        else:
-            screen.blit(myplane.image2, myplane.rect)
-    else:
-        # myplane was down
-        if not (counter % 3):
-            if myplane_destroy_index == 0:
-                me_down_sound.play()
-            screen.blit(myplane.destroy_images[myplane_destroy_index], myplane.rect)
-            myplane_destroy_index = (myplane_destroy_index + 1) % 4
-            if myplane_destroy_index % 4 == 0:
-                pygame.time.delay(500)
-                running = False
-                print('GAME OVER!!')
-
+    # draw the scores board
     scores_text = scores_font.render(('Scores: %s' % str(scores)), True, WHITE)
     scores_rect = scores_text.get_rect()
     scores_rect.left, scores_rect.top = 10, 5
     screen.blit(scores_text, scores_rect)
+
+    # draw the Pause/Resume Icon
+    screen.blit(pause_image, pause_rect)
+
+
+
+    # difficult level changing
+    # level 2, add small 3, middle 2, big 1, small speed+1
+    if level == 1 and scores > 50000:
+        level = 2
+        upgrade_sound.play()
+        add_small_enemies(small_enemies, all_enemies, 3)
+        add_middle_enemies(middle_enemies, all_enemies, 2)
+        add_big_enemies(big_enemies, all_enemies, 1)
+        increase_speed(small_enemies, 1)
+    # level 3, add small 5, middle 3, big 2, small speed+1, middle speed + 1
+    elif level == 2 and scores > 300000:
+        level == 3
+        upgrade_sound.play()
+        add_small_enemies(small_enemies, all_enemies, 5)
+        add_middle_enemies(middle_enemies, all_enemies, 3)
+        add_big_enemies(big_enemies, all_enemies, 2)
+        increase_speed(small_enemies, 1)
+        increase_speed(middle_enemies, 1)
+    # level 4
+    elif level == 3 and scores > 600000:
+        level == 4
+        upgrade_sound.play()
+        add_small_enemies(small_enemies, all_enemies, 5)
+        add_middle_enemies(middle_enemies, all_enemies, 3)
+        add_big_enemies(big_enemies, all_enemies, 2)
+        increase_speed(small_enemies, 1)
+        increase_speed(middle_enemies, 1)
+    # level 5
+    elif level == 4 and scores > 1000000:
+        level == 5
+        upgrade_sound.play()
+        add_small_enemies(small_enemies, all_enemies, 5)
+        add_middle_enemies(middle_enemies, all_enemies, 3)
+        add_big_enemies(big_enemies, all_enemies, 2)
+        increase_speed(small_enemies, 1)
+        increase_speed(middle_enemies, 1)
 
     pygame.display.flip()
     clock.tick(60)

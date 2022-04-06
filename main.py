@@ -2,9 +2,11 @@ import pygame
 import sys
 import myplane
 import enemies
-import bullet1
+import bullet
+import supply
 import traceback
 from pygame.locals import *
+from random import *
 
 pygame.init()
 pygame.mixer.init()
@@ -129,15 +131,38 @@ small_enemy_destroy_index = 0
 middle_enemy_destroy_index = 0
 big_enemy_destroy_index = 0
 
-# bullet initialization
+# normal bullet(bullet1) initialization
 bullets = []
-bullet_index = 0
-BULLET_NUM = 4
-for i in range(BULLET_NUM):
-    bullets.append(bullet1.Bullet1(myplane.rect.midtop))
+bullets1 = []
+bullet1_index = 0
+BULLET1_NUM = 4
+for i in range(BULLET1_NUM):
+    bullets1.append(bullet.Bullet1(myplane.rect.midtop))
+
+# supper bullet(bullet2) initialization
+super_bullet_flag = False
+bullets2 = []
+bullet2_index = 0
+BULLET2_NUM = 8
+for i in range(BULLET2_NUM // 2):
+    bullets2.append(bullet.Bullet2((myplane.rect.centerx - 33, myplane.rect.centery)))
+    bullets2.append(bullet.Bullet2((myplane.rect.centerx + 30, myplane.rect.centery)))
 
 # level for difficulties
 level = 1
+
+# TIMER for providing supply every 30s
+SUPPLY_TIMER  = USEREVENT
+pygame.time.set_timer(SUPPLY_TIMER, 30 * 1000)
+
+# TIMER for supper bullet(last 18s)
+BULLET2_TIMER = USEREVENT + 1
+
+
+# initialize the supply
+bullet_supply = supply.Bullet_supply(bg_size)
+bomb_supply = supply.Bomb_supply(bg_size)
+current_supply = bullet_supply
 
 while running:
     for event in pygame.event.get():
@@ -149,6 +174,15 @@ while running:
         elif event.type == MOUSEBUTTONDOWN:
             if event.button == 1 and pause_rect.collidepoint(event.pos):
                 paused = not paused
+                if paused:
+                    pygame.time.set_timer(SUPPLY_TIMER, 0)
+                    pygame.mixer.music.pause()
+                    pygame.mixer.pause()
+                else:
+                    pygame.time.set_timer(SUPPLY_TIMER, 30 * 1000)
+                    pygame.mixer.music.unpause()
+                    pygame.mixer.unpause()
+
         # when mouse pointer goes into the border of icon it changed to a deeper icon
         elif event.type == MOUSEMOTION:
             if pause_rect.collidepoint(event.pos):
@@ -172,6 +206,19 @@ while running:
                     for e in all_enemies:
                         if e.rect.bottom > 0:
                             e.active = False
+
+        # provide the supply after get a USEREVENT every 30s
+        elif event.type == SUPPLY_TIMER:
+            supply_sound.play()
+            if choice([True, False]):
+                bullet_supply.active = True
+            else:
+                bomb_supply.active = True
+
+        # Timer for supper bullet(18s)
+        elif event.type == BULLET2_TIMER:
+            super_bullet_flag = False
+
 
     # get the key_pressed list(boolean)
     key_pressed_list = pygame.key.get_pressed()
@@ -208,12 +255,21 @@ while running:
     if not paused:
         # change the bullet position to follow myplane every 10 frames
         if not (counter % 10):
-            bullets[bullet_index].reset(myplane.rect.midtop)
-            bullet_index = (bullet_index + 1) % BULLET_NUM
+            if super_bullet_flag:
+                bullets = bullets2
+                # odd bullet in the left gun, even bullet in the right gun
+                bullets[bullet2_index].reset(myplane.rect.centerx - 33, myplane.rect.centery)
+                bullets[bullet2_index + 1].reset(myplane.rect.centerx + 30, myplane.rect.centery)
+                bullet2_index = (bullet2_index + 2 ) % BULLET2_NUM
+            else:
+                bullets = bullets1
+                bullets[bullet1_index].reset(myplane.rect.midtop)
+                bullet1_index = (bullet1_index + 1) % BULLET1_NUM
 
         # draw the bullet
         for b in bullets:
             if b.active:
+                bullet_sound.play()
                 b.move()
                 screen.blit(b.image, b.rect)
                 enemy_hit = pygame.sprite.spritecollide(b, all_enemies, False, pygame.sprite.collide_mask)
@@ -344,6 +400,25 @@ while running:
         screen.blit(bomb_image, bomb_rect)
         screen.blit(bomb_text, (bomb_rect.width + 20, bomb_rect.top))
 
+        # draw the bullet supply and bomb supply
+        if bullet_supply.active:
+            bullet_supply.move()
+            screen.blit(bullet_supply.image, bullet_supply.rect)
+            if pygame.sprite.collide_mask(bullet_supply, myplane):
+                get_bullet_sound.play()
+                supper_bullet_flag = True
+                pygame.time.set_timer(BULLET2_TIMER, 18 * 1000)
+                bullet_supply.active = False
+
+        if bomb_supply.active:
+            bomb_supply.move()
+            screen.blit(bomb_supply.image, bomb_supply.rect)
+            if pygame.sprite.collide_mask(bomb_supply, myplane):
+                get_bomb_sound.play()
+                if bomb_num < 3:
+                    bomb_num += 1
+                bomb_supply.active = False
+
     # draw the scores board
     scores_text = scores_font.render(('Scores: %s' % str(scores)), True, WHITE)
     scores_rect = scores_text.get_rect()
@@ -355,9 +430,9 @@ while running:
 
 
 
-    # difficult level changing
+    # difficulty level setting
     # level 2, add small 3, middle 2, big 1, small speed+1
-    if level == 1 and scores > 50000:
+    if level == 1 and scores > 500000:
         level = 2
         upgrade_sound.play()
         add_small_enemies(small_enemies, all_enemies, 3)
@@ -365,7 +440,7 @@ while running:
         add_big_enemies(big_enemies, all_enemies, 1)
         increase_speed(small_enemies, 1)
     # level 3, add small 5, middle 3, big 2, small speed+1, middle speed + 1
-    elif level == 2 and scores > 300000:
+    elif level == 2 and scores > 1000000:
         level == 3
         upgrade_sound.play()
         add_small_enemies(small_enemies, all_enemies, 5)
@@ -374,7 +449,7 @@ while running:
         increase_speed(small_enemies, 1)
         increase_speed(middle_enemies, 1)
     # level 4
-    elif level == 3 and scores > 600000:
+    elif level == 3 and scores > 1500000:
         level == 4
         upgrade_sound.play()
         add_small_enemies(small_enemies, all_enemies, 5)
@@ -383,7 +458,7 @@ while running:
         increase_speed(small_enemies, 1)
         increase_speed(middle_enemies, 1)
     # level 5
-    elif level == 4 and scores > 1000000:
+    elif level == 4 and scores > 2000000:
         level == 5
         upgrade_sound.play()
         add_small_enemies(small_enemies, all_enemies, 5)

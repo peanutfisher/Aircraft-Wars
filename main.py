@@ -139,7 +139,7 @@ BULLET1_NUM = 4
 for i in range(BULLET1_NUM):
     bullets1.append(bullet.Bullet1(myplane.rect.midtop))
 
-# supper bullet(bullet2) initialization
+# super bullet(bullet2) initialization
 super_bullet_flag = False
 bullets2 = []
 bullet2_index = 0
@@ -155,7 +155,7 @@ level = 1
 SUPPLY_TIMER  = USEREVENT
 pygame.time.set_timer(SUPPLY_TIMER, 30 * 1000)
 
-# TIMER for supper bullet(last 18s)
+# TIMER for super bullet(last 18s)
 BULLET2_TIMER = USEREVENT + 1
 
 
@@ -174,6 +174,7 @@ while running:
         elif event.type == MOUSEBUTTONDOWN:
             if event.button == 1 and pause_rect.collidepoint(event.pos):
                 paused = not paused
+                # if paused the game then background music and sounds all are paused.
                 if paused:
                     pygame.time.set_timer(SUPPLY_TIMER, 0)
                     pygame.mixer.music.pause()
@@ -211,11 +212,11 @@ while running:
         elif event.type == SUPPLY_TIMER:
             supply_sound.play()
             if choice([True, False]):
-                bullet_supply.active = True
+                bullet_supply.reset()
             else:
-                bomb_supply.active = True
+                bomb_supply.reset()
 
-        # Timer for supper bullet(18s)
+        # Timer for super bullet(18s)
         elif event.type == BULLET2_TIMER:
             super_bullet_flag = False
 
@@ -255,16 +256,20 @@ while running:
     if not paused:
         # change the bullet position to follow myplane every 10 frames
         if not (counter % 10):
-            if super_bullet_flag:
-                bullets = bullets2
-                # odd bullet in the left gun, even bullet in the right gun
-                bullets[bullet2_index].reset(myplane.rect.centerx - 33, myplane.rect.centery)
-                bullets[bullet2_index + 1].reset(myplane.rect.centerx + 30, myplane.rect.centery)
-                bullet2_index = (bullet2_index + 2 ) % BULLET2_NUM
-            else:
-                bullets = bullets1
-                bullets[bullet1_index].reset(myplane.rect.midtop)
-                bullet1_index = (bullet1_index + 1) % BULLET1_NUM
+            # change the bullet rect to follow with myplane
+            bullets1[bullet1_index].reset(myplane.rect.midtop)
+            bullet1_index = (bullet1_index + 1) % BULLET1_NUM
+
+            # odd bullet in the left gun, even bullet in the right gun
+            bullets2[bullet2_index].reset((myplane.rect.centerx - 33, myplane.rect.centery))
+            bullets2[bullet2_index + 1].reset((myplane.rect.centerx + 30, myplane.rect.centery))
+            bullet2_index = (bullet2_index + 2) % BULLET2_NUM
+
+        # check if super bullet got
+        if super_bullet_flag:
+            bullets = bullets2
+        else:
+            bullets = bullets1
 
         # draw the bullet
         for b in bullets:
@@ -406,7 +411,8 @@ while running:
             screen.blit(bullet_supply.image, bullet_supply.rect)
             if pygame.sprite.collide_mask(bullet_supply, myplane):
                 get_bullet_sound.play()
-                supper_bullet_flag = True
+                super_bullet_flag = True
+                print('super bullet flag', super_bullet_flag)
                 pygame.time.set_timer(BULLET2_TIMER, 18 * 1000)
                 bullet_supply.active = False
 
@@ -419,6 +425,7 @@ while running:
                     bomb_num += 1
                 bomb_supply.active = False
 
+
     # draw the scores board
     scores_text = scores_font.render(('Scores: %s' % str(scores)), True, WHITE)
     scores_rect = scores_text.get_rect()
@@ -427,8 +434,6 @@ while running:
 
     # draw the Pause/Resume Icon
     screen.blit(pause_image, pause_rect)
-
-
 
     # difficulty level setting
     # level 2, add small 3, middle 2, big 1, small speed+1

@@ -16,6 +16,7 @@ class MyPlane(pygame.sprite.Sprite):
                             self.height - self.rect.height - 60
         self.speed = 10
         self.active = True
+        self.invincible = False
         self.mask = pygame.mask.from_surface(self.image1)
 
     def moveUp(self):
@@ -41,3 +42,9 @@ class MyPlane(pygame.sprite.Sprite):
                 self.rect.left += self.speed
             else:
                 self.rect.left == self.width - self.rect.width
+
+    def reset(self):
+        self.active = True
+        self.rect.left, self.rect.top = (self.width - self.rect.width) // 2, \
+                                        self.height - self.rect.height - 60
+        self.invincible = True

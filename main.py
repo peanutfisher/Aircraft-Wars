@@ -27,6 +27,16 @@ resume_nor_image = pygame.image.load('images/resume_nor.png').convert_alpha()
 resume_pressed_image = pygame.image.load('images/resume_pressed.png').convert_alpha()
 bomb_image = pygame.image.load('images/bomb.png').convert_alpha()
 
+# images for game over
+restart_image = pygame.image.load('images/again.png').convert_alpha()
+restart_rect = restart_image.get_rect()
+restart_rect.left, restart_rect.top = (width - restart_rect.width) // 2, height * 2 / 3
+
+gameover_image = pygame.image.load('images/gameover.png').convert_alpha()
+gameover_rect = restart_image.get_rect()
+gameover_rect.left, gameover_rect.top = (width - gameover_rect.width) // 2, height * 2 / 3 + 45
+gameover_font = pygame.font.Font('font/font.ttf', 45)
+
 
 clock = pygame.time.Clock()
 
@@ -61,6 +71,11 @@ use_bomb_sound.set_volume(0.2)
 
 # create myplane
 myplane = myplane.MyPlane(myplane_image1, myplane_image2, bg_size)
+
+# lives of myplane
+life_num = 3
+life_image = pygame.image.load('images/life.png').convert_alpha()
+life_rect = life_image.get_rect()
 
 # bomb setting
 bomb_rect = bomb_image.get_rect()
@@ -158,6 +173,8 @@ pygame.time.set_timer(SUPPLY_TIMER, 30 * 1000)
 # TIMER for super bullet(last 18s)
 BULLET2_TIMER = USEREVENT + 1
 
+# TIMER for myplane invincible time(3s)
+INVINCIBLE_TIMER = USEREVENT + 2
 
 # initialize the supply
 bullet_supply = supply.Bullet_supply(bg_size)
@@ -220,6 +237,9 @@ while running:
         elif event.type == BULLET2_TIMER:
             super_bullet_flag = False
 
+        # Timer for myplane invincible after born again
+        elif event.type == INVINCIBLE_TIMER:
+            myplane.invincible = False
 
     # get the key_pressed list(boolean)
     key_pressed_list = pygame.key.get_pressed()
@@ -245,15 +265,16 @@ while running:
 
     # Monitoring if myplane is collided with enemy
     collide_list = pygame.sprite.spritecollide(myplane, all_enemies, False, pygame.sprite.collide_mask)
-    if collide_list:
-        #myplane.active = False
+    if collide_list and not myplane.invincible:
+        myplane.active = False
         for each in collide_list:
             each.active = False
+
     # Starting drawing the screen
     screen.blit(background, (0, 0))
 
     # if not paused then we draw everything, otherwise it will stop
-    if not paused:
+    if not paused and life_num:
         # change the bullet position to follow myplane every 10 frames
         if not (counter % 10):
             # change the bullet rect to follow with myplane
@@ -396,9 +417,14 @@ while running:
                 screen.blit(myplane.destroy_images[myplane_destroy_index], myplane.rect)
                 myplane_destroy_index = (myplane_destroy_index + 1) % 4
                 if myplane_destroy_index % 4 == 0:
-                    pygame.time.delay(500)
-                    running = False
-                    print('GAME OVER!!')
+                    life_num -= 1
+                    myplane.reset()
+                    pygame.time.set_timer(INVINCIBLE_TIMER, 3 * 1000)
+
+        # draw the life picture of myplane
+        for i in range(1, (life_num + 1)):
+            life_rect.left, life_rect.top = width - life_rect.width * i - 10, height - life_rect.height - 10
+            screen.blit(life_image, life_rect)
 
         # draw the bomb
         bomb_text = bomb_font.render(('x %s' % str(bomb_num)), True, WHITE)
@@ -424,16 +450,14 @@ while running:
                 if bomb_num < 3:
                     bomb_num += 1
                 bomb_supply.active = False
+        # draw the scores board
+        scores_text = scores_font.render(('Scores: %s' % str(scores)), True, WHITE)
+        scores_rect = scores_text.get_rect()
+        scores_rect.left, scores_rect.top = 10, 5
+        screen.blit(scores_text, scores_rect)
 
-
-    # draw the scores board
-    scores_text = scores_font.render(('Scores: %s' % str(scores)), True, WHITE)
-    scores_rect = scores_text.get_rect()
-    scores_rect.left, scores_rect.top = 10, 5
-    screen.blit(scores_text, scores_rect)
-
-    # draw the Pause/Resume Icon
-    screen.blit(pause_image, pause_rect)
+        # draw the Pause/Resume Icon
+        screen.blit(pause_image, pause_rect)
 
     # difficulty level setting
     # level 2, add small 3, middle 2, big 1, small speed+1
@@ -471,6 +495,38 @@ while running:
         add_big_enemies(big_enemies, all_enemies, 2)
         increase_speed(small_enemies, 1)
         increase_speed(middle_enemies, 1)
+
+    # Game over when all myplane lives gone
+    elif not life_num:
+        # stop the music, sound and supply timer
+        pygame.mixer.music.stop()
+        pygame.mixer.stop()
+        pygame.time.set_timer(SUPPLY_TIMER, 0)
+
+        # read the highest scores from history
+        with open('records.txt', 'r') as f:
+            highest_scores = f.read()
+            if highest_scores == '':
+                highest_scores = 0
+
+        # compare your scores with historical highest scores and note the new highest
+        if scores > int(highest_scores):
+            with open('records.txt', 'w') as f:
+                f.write(str(scores))
+
+        # draw the highest scores / Your scores / restart / game over pictures
+        highest_scores_text = scores_font.render(('Highest Scores: %s' % highest_scores), True, WHITE)
+        highest_scores_rect = highest_scores_text.get_rect()
+        highest_scores_rect.left, highest_scores_rect.top = 30, 50
+
+        your_scores_text = gameover_font.render(('Your Scores: %s' % str(scores)), True, WHITE)
+        your_scores_rect = your_scores_text.get_rect()
+        your_scores_rect.center = width // 2, height / 3
+
+        screen.blit(highest_scores_text, highest_scores_rect)
+        screen.blit(your_scores_text, your_scores_rect)
+        screen.blit(restart_image, restart_rect)
+        screen.blit(gameover_image, gameover_rect)
 
     pygame.display.flip()
     clock.tick(60)

@@ -43,30 +43,30 @@ clock = pygame.time.Clock()
 running = True
 
 # background music and Sounds
-pygame.mixer.music.load("sound\\game_music.ogg")
+pygame.mixer.music.load("sound/game_music.ogg")
 pygame.mixer.music.set_volume(0.2)
 pygame.mixer.music.play(-1)
-bullet_sound = pygame.mixer.Sound("sound\\bullet.wav")
+bullet_sound = pygame.mixer.Sound("sound/bullet.wav")
 bullet_sound.set_volume(0.2)
-enemy1_down_sound = pygame.mixer.Sound("sound\\enemy1_down.wav")
+enemy1_down_sound = pygame.mixer.Sound("sound/enemy1_down.wav")
 enemy1_down_sound.set_volume(0.2)
-enemy2_down_sound = pygame.mixer.Sound("sound\\enemy2_down.wav")
+enemy2_down_sound = pygame.mixer.Sound("sound/enemy2_down.wav")
 enemy2_down_sound.set_volume(0.2)
-enemy3_down_sound = pygame.mixer.Sound("sound\\enemy3_down.wav")
+enemy3_down_sound = pygame.mixer.Sound("sound/enemy3_down.wav")
 enemy3_down_sound.set_volume(0.2)
-enemy3_flying_sound = pygame.mixer.Sound("sound\\enemy3_flying.wav")
+enemy3_flying_sound = pygame.mixer.Sound("sound/enemy3_flying.wav")
 enemy3_flying_sound.set_volume(0.5)
-get_bomb_sound = pygame.mixer.Sound("sound\\get_bomb.wav")
+get_bomb_sound = pygame.mixer.Sound("sound/get_bomb.wav")
 get_bomb_sound.set_volume(0.2)
-get_bullet_sound = pygame.mixer.Sound("sound\\get_bullet.wav")
+get_bullet_sound = pygame.mixer.Sound("sound/get_bullet.wav")
 get_bullet_sound.set_volume(0.2)
-me_down_sound = pygame.mixer.Sound("sound\\me_down.wav")
+me_down_sound = pygame.mixer.Sound("sound/me_down.wav")
 me_down_sound.set_volume(0.2)
-supply_sound = pygame.mixer.Sound("sound\\supply.wav")
+supply_sound = pygame.mixer.Sound("sound/supply.wav")
 supply_sound.set_volume(0.2)
-upgrade_sound = pygame.mixer.Sound("sound\\upgrade.wav")
+upgrade_sound = pygame.mixer.Sound("sound/upgrade.wav")
 upgrade_sound.set_volume(0.2)
-use_bomb_sound = pygame.mixer.Sound("sound\\use_bomb.wav")
+use_bomb_sound = pygame.mixer.Sound("sound/use_bomb.wav")
 use_bomb_sound.set_volume(0.2)
 
 # create myplane
@@ -200,6 +200,15 @@ while running:
                     pygame.time.set_timer(SUPPLY_TIMER, 30 * 1000)
                     pygame.mixer.music.unpause()
                     pygame.mixer.unpause()
+
+            # click the image to restart the game
+            elif event.button == 1 and restart_rect.collidepoint(event.pos):
+                main()
+            # click the image to quit the game
+            elif event.button == 1 and gameover_rect.collidepoint(event.pos):
+                running = False
+                pygame.quit()
+                sys.exit()
 
         # when mouse pointer goes into the border of icon it changed to a deeper icon
         elif event.type == MOUSEMOTION:
@@ -450,6 +459,7 @@ while running:
                 if bomb_num < 3:
                     bomb_num += 1
                 bomb_supply.active = False
+
         # draw the scores board
         scores_text = scores_font.render(('Scores: %s' % str(scores)), True, WHITE)
         scores_rect = scores_text.get_rect()
@@ -459,42 +469,42 @@ while running:
         # draw the Pause/Resume Icon
         screen.blit(pause_image, pause_rect)
 
-    # difficulty level setting
-    # level 2, add small 3, middle 2, big 1, small speed+1
-    if level == 1 and scores > 500000:
-        level = 2
-        upgrade_sound.play()
-        add_small_enemies(small_enemies, all_enemies, 3)
-        add_middle_enemies(middle_enemies, all_enemies, 2)
-        add_big_enemies(big_enemies, all_enemies, 1)
-        increase_speed(small_enemies, 1)
-    # level 3, add small 5, middle 3, big 2, small speed+1, middle speed + 1
-    elif level == 2 and scores > 1000000:
-        level == 3
-        upgrade_sound.play()
-        add_small_enemies(small_enemies, all_enemies, 5)
-        add_middle_enemies(middle_enemies, all_enemies, 3)
-        add_big_enemies(big_enemies, all_enemies, 2)
-        increase_speed(small_enemies, 1)
-        increase_speed(middle_enemies, 1)
-    # level 4
-    elif level == 3 and scores > 1500000:
-        level == 4
-        upgrade_sound.play()
-        add_small_enemies(small_enemies, all_enemies, 5)
-        add_middle_enemies(middle_enemies, all_enemies, 3)
-        add_big_enemies(big_enemies, all_enemies, 2)
-        increase_speed(small_enemies, 1)
-        increase_speed(middle_enemies, 1)
-    # level 5
-    elif level == 4 and scores > 2000000:
-        level == 5
-        upgrade_sound.play()
-        add_small_enemies(small_enemies, all_enemies, 5)
-        add_middle_enemies(middle_enemies, all_enemies, 3)
-        add_big_enemies(big_enemies, all_enemies, 2)
-        increase_speed(small_enemies, 1)
-        increase_speed(middle_enemies, 1)
+        # difficulty level setting
+        # level 2, add small 3, middle 2, big 1, small speed+1
+        if level == 1 and scores > 500000:
+            level = 2
+            upgrade_sound.play()
+            add_small_enemies(small_enemies, all_enemies, 3)
+            add_middle_enemies(middle_enemies, all_enemies, 2)
+            add_big_enemies(big_enemies, all_enemies, 1)
+            increase_speed(small_enemies, 1)
+        # level 3, add small 5, middle 3, big 2, small speed+1, middle speed + 1
+        elif level == 2 and scores > 1000000:
+            level == 3
+            upgrade_sound.play()
+            add_small_enemies(small_enemies, all_enemies, 5)
+            add_middle_enemies(middle_enemies, all_enemies, 3)
+            add_big_enemies(big_enemies, all_enemies, 2)
+            increase_speed(small_enemies, 1)
+            increase_speed(middle_enemies, 1)
+        # level 4
+        elif level == 3 and scores > 1500000:
+            level == 4
+            upgrade_sound.play()
+            add_small_enemies(small_enemies, all_enemies, 5)
+            add_middle_enemies(middle_enemies, all_enemies, 3)
+            add_big_enemies(big_enemies, all_enemies, 2)
+            increase_speed(small_enemies, 1)
+            increase_speed(middle_enemies, 1)
+        # level 5
+        elif level == 4 and scores > 2000000:
+            level == 5
+            upgrade_sound.play()
+            add_small_enemies(small_enemies, all_enemies, 5)
+            add_middle_enemies(middle_enemies, all_enemies, 3)
+            add_big_enemies(big_enemies, all_enemies, 2)
+            increase_speed(small_enemies, 1)
+            increase_speed(middle_enemies, 1)
 
     # Game over when all myplane lives gone
     elif not life_num:

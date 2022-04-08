@@ -432,6 +432,7 @@ def main():
                         life_num -= 1
                         myplane.reset()
                         pygame.time.set_timer(INVINCIBLE_TIMER, 3 * 1000)
+                        super_bullet_flag = False
 
             # draw the life picture of myplane
             for i in range(1, (life_num + 1)):
@@ -450,7 +451,6 @@ def main():
                 if pygame.sprite.collide_mask(bullet_supply, myplane):
                     get_bullet_sound.play()
                     super_bullet_flag = True
-                    print('super bullet flag', super_bullet_flag)
                     pygame.time.set_timer(BULLET2_TIMER, 18 * 1000)
                     bullet_supply.active = False
 

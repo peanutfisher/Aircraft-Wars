@@ -99,6 +99,8 @@ def main():
     # Scores Board
     scores = 0
     scores_font = pygame.font.Font('font/font.ttf', 36)
+    scores_list = [0, 0, 0]
+    file_updated = False
 
     # Game Pause and Resume flag
     paused = False
@@ -514,27 +516,53 @@ def main():
             pygame.mixer.stop()
             pygame.time.set_timer(SUPPLY_TIMER, 0)
 
-            # read the highest scores from history
-            with open('records.txt', 'r') as f:
-                highest_scores = f.read()
-                if highest_scores == '':
-                    highest_scores = 0
+            # use the file_updated flag to make sure the file only read/write for one time
+            if not file_updated:
+                file_updated = True
+                # read the highest scores from history, if empty then insert the first records as 0
+                with open('records.txt', 'r') as f:
+                    temp = f.read()
+                    if temp == '':
+                        temp = '0\n'
+                    # split the str into list via '\n'
+                    scores_list = temp.splitlines()
 
-            # compare your scores with historical highest scores and note the new highest
-            if scores > int(highest_scores):
+                    # add default record to the records.txt(total 3 records)
+                    if len(scores_list) < 4:
+                        for i in range(3 - len(scores_list)):
+                            scores_list.append('0')
+                    else:
+                        # only keep 3 records in the list
+                        scores_list = scores_list[:3]
+
+                # covert the str list to int list
+                scores_list = list(map(int, scores_list))
+
+                # if the current scores is higher than records then insert the new record and remove the last one
+                for i in range(len(scores_list)):
+                    if scores > scores_list[i]:
+                        # scores_list[i], scores = scores, scores_list[i]
+                        scores_list.insert(i, scores)
+                        scores_list.pop()
+                        break
+
+                # wrote records into the list
                 with open('records.txt', 'w') as f:
-                    f.write(str(scores))
+                    for each in scores_list:
+                        f.write(str(each)+'\n')
 
             # draw the highest scores / Your scores / restart / game over pictures
-            highest_scores_text = scores_font.render(('Highest Scores: %s' % highest_scores), True, WHITE)
-            highest_scores_rect = highest_scores_text.get_rect()
-            highest_scores_rect.left, highest_scores_rect.top = 30, 50
+            for i in range(len(scores_list)):
+                highest_scores_text = scores_font.render(('Best Scores %d: %s' % (i+1, scores_list[i])), True, WHITE)
+                highest_scores_rect = highest_scores_text.get_rect()
+                highest_scores_rect.left, highest_scores_rect.top = 30, (40 + 30 * i)
+                screen.blit(highest_scores_text, highest_scores_rect)
 
             your_scores_text = gameover_font.render(('Your Scores: %s' % str(scores)), True, WHITE)
             your_scores_rect = your_scores_text.get_rect()
             your_scores_rect.center = width // 2, height / 3
 
-            screen.blit(highest_scores_text, highest_scores_rect)
+
             screen.blit(your_scores_text, your_scores_rect)
             screen.blit(restart_image, restart_rect)
             screen.blit(gameover_image, gameover_rect)
